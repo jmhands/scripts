@@ -36,7 +36,9 @@ for bs in "${BLOCK_SIZES[@]}"; do
                             --group_reporting \
                             --name="${TEST_NAME}" \
                             --iodepth="${io_depth}" \
-                            --write_bw_log="fio_logs/${TEST_NAME}_bw.log" \
+                            # uncomment these to write the bandwidth log
+                            #--log_avg_msec=1000 \
+                            #--write_bw_log="fio_logs/${TEST_NAME}_bw.log" \
                             --output-format=json 2>&1)
 
       echo "Completed test: ${TEST_NAME}"
