@@ -60,7 +60,7 @@ Find all files below a certain size and delete them
 
 Print total amount of terabytes in /mnt
 
-`df | grep mnt | awk 'BEGIN{sum=0} {sum+=$3*1024/(1000^5)} END{print sum}'`
+`df | grep mnt | awk 'BEGIN{sum=0} {sum+=$3*1024/(1000^4)} END{print sum}'`
 
 Update firmware on SATA drive with hdparm
 
