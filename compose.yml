@@ -1,0 +1,46 @@
+# sample docker compose for Chia farming with chia-exporter
+version: "3.6"
+services:
+  chia:
+    container_name: chia
+    restart: unless-stopped
+    image: ghcr.io/chia-network/chia:latest
+    ports:
+      - 8444:8444
+    expose:
+      - 55400
+      - 8555
+      - 8557
+      - 8559
+      - 8560
+      - 8562
+      - 9256
+    environment:
+     - self_hostname=0.0.0.0
+     - service=harvester
+     - farmer_address=192.168.0.100
+     - farmer_port=8447
+     - ca=/ca
+     - keys=copy
+     - plots_dir=/plots
+     - recursive_plot_scan=true
+     - log_level=INFO
+    volumes:
+      - /mnt:/plots
+      - /home/jm/ca:/ca
+      - chia-root:/root/.chia
+
+  chia-exporter:
+    image: ghcr.io/chia-network/chia-exporter:latest
+    container_name: chia-exporter
+    ports:
+      - 9914:9914
+    restart: unless-stopped
+    environment:
+      CHIA_ROOT: /root/.chia/mainnet
+      CHIA_EXPORTER_HOSTNAME: chia
+    volumes:
+      - chia-root:/root/.chia
+
+volumes:
+  chia-root:
