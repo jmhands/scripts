@@ -30,16 +30,13 @@ for bs in "${BLOCK_SIZES[@]}"; do
                             --direct=1 \
                             --bs="${bs}" \
                             --ioengine=io_uring \
-                            --runtime=60 \
+                            --runtime=10 \
                             --numjobs=1 \
                             --time_based \
                             --group_reporting \
                             --name="${TEST_NAME}" \
                             --iodepth="${io_depth}" \
-                            # uncomment these to write the bandwidth log
-                            #--log_avg_msec=1000 \
-                            #--write_bw_log="fio_logs/${TEST_NAME}_bw.log" \
-                            --output-format=json 2>&1)
+                            --output-format=json 2>&1 | jq -c 'select(.jobs != null)')
 
       echo "Completed test: ${TEST_NAME}"
       echo "--------------------------------------"
