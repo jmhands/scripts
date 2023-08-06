@@ -4,7 +4,7 @@
 read -p "Enter your username: " username
 
 # List all unmounted drives with no partitions
-drives=$(lsblk -nlo NAME,MOUNTPOINT | awk '! /\// {print $1}' | grep -E '^sd[b-z]$|^sd[b-z][a-z]$|^sd[b-z][a-z][0-9]$')
+drives=$(lsblk -nlo NAME,MOUNTPOINT | awk '! /\// {print $1}' | grep -E '^sd[b-z]$|^sd[b-z][a-z]$|^sd[b-z][a-z][0-9]$|^sda[a-z]$|^sda[a-z][0-9]$')
 
 # Prompt user for confirmation
 echo "The following drives will have fstab and mountpoints created for:"
