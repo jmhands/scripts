@@ -3,8 +3,14 @@
 # Prompt user for their username
 read -p "Enter your username: " username
 
-# List all unmounted drives with no partitions
-drives=$(lsblk -nlo NAME,MOUNTPOINT | awk '! /\// {print $1}' | grep -E '^sd[b-z]$|^sd[b-z][a-z]$|^sd[b-z][a-z][0-9]$|^sda[a-z]$|^sda[a-z][0-9]$')
+# Prompt user for their boot drive
+read -p "Enter your boot drive (e.g. /dev/sda): " boot_drive
+
+# Extract just the name of the boot drive without '/dev/'
+boot_drive_name=$(echo "$boot_drive" | sed 's/\/dev\///')
+
+# List all unmounted drives with no partitions and exclude the boot drive and its partitions
+drives=$(lsblk -nlo NAME,MOUNTPOINT | awk '! /\// {print $1}' | grep -Ev "^$boot_drive_name$|^$boot_drive_name[0-9]+$" | grep -E '^sd[b-z]$|^sd[b-z][a-z]$|^sd[b-z][a-z][0-9]$|^sda[a-z]$|^sda[a-z][0-9]$')
 
 # Prompt user for confirmation
 echo "The following drives will have fstab and mountpoints created for:"
