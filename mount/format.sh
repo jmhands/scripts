@@ -1,13 +1,23 @@
 #!/bin/bash
 
 # Find all drives that are not mounted
-drives=$(lsblk -nlo NAME,MOUNTPOINT | awk '! /\// {print $1}' | grep -E '^sd[b-z]$|^sd[b-z][a-z]$|^sd[b-z][a-z][0-9]$')
+drives=$(lsblk -nlo NAME,MOUNTPOINT | awk '! /\// {print $1}' | grep -E '^sd[a-z]$|^sd[a-z][a-z]$|^sd[a-z][a-z][0-9]$')
 
-# Prompt user for confirmation
+# Prompt user for drives to skip
+read -p "Enter drives you want to skip (comma separated e.g. sda,sdb): " skip_drives
+IFS=',' read -ra ADDR <<< "$skip_drives"
+
+# Remove the drives to skip from the list
+for i in "${ADDR[@]}"; do
+   drives=$(echo "$drives" | sed "/^$i$/d")
+done
+
+# Show the list of drives to be formatted
 echo "The following drives will be formatted:"
 for drive in $drives; do
   echo "/dev/$drive"
 done
+
 read -p "Do you want to proceed with formatting (y/n)? " confirm
 
 if [[ $confirm =~ ^[Yy]$ ]]
