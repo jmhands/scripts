@@ -58,6 +58,7 @@ services:
       - mysql_data:/var/lib/mysql
   dcgm_exporter:
     image: nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
+    container_name: dcgm-exporter
     ports:
       - "9400:9400"
     cap_add:
