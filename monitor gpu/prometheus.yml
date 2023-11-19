@@ -11,9 +11,8 @@ scrape_configs:
     static_configs:
     - targets: ["node-exporter:9100"]
 
-  - job_name: "chia-exporter"
+  - job_name: "nvidia-dcgm"
     static_configs:
-    - targets: ["192.168.0.43:9914"]
-      labels:
-        application: 'chia-blockchain'
-        network: 'mainnet'
+    - targets: ["dcgm-exporter:9400"]
+
+
