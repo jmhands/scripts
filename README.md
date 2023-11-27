@@ -30,6 +30,9 @@ IO_DEPTHS=("1" "4" "16" "64" "128" "256")
 
 ## random one liners
 
+sort folders by disk usage
+`sudo du -h --max-depth=1 / | sort -hr`
+
 NFS settings for /etc/fstab
 
 `nfs rw,hard,intr,rsize=32768,wsize=32768,nfsvers=4,async,noatime,actimeo=0,timeo=600,retry=-1`
