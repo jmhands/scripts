@@ -1,0 +1,58 @@
+---
+- name: Deploy Fast Farmer Service and Files
+  hosts: harvesters
+  become: yes  # Use sudo
+  tasks:
+    - name: Ensure .config/fast_farmer directory exists
+      ansible.builtin.file:
+        path: "/home/{{ ansible_env.HOME }}/.config/fast_farmer"
+        state: directory
+        mode: '0755'
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+
+    - name: Copy fast_farmer.yaml to correct config directory
+      ansible.builtin.copy:
+        src: "templates/fast_farmer.yaml"
+        dest: "/home/{{ ansible_env.HOME }}/.config/fast_farmer/fast_farmer.yaml"
+        mode: '0644'
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+
+    - name: Copy ff_giga to /home/{{ ansible_env.USER }} and /usr/local/bin
+      ansible.builtin.copy:
+        src: "templates/ff_giga"
+        dest: "{{ item }}"
+        mode: '0755'
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+        force: yes
+      loop:
+        - "/home/{{ ansible_env.HOME }}/ff_giga"
+        - "/usr/local/bin/ff_giga"
+
+    - name: Copy CA directory to /home/{{ ansible_env.USER }}/ca
+      ansible.builtin.copy:
+        src: "templates/ca/"
+        dest: "/home/{{ ansible_env.HOME }}/ssl/ca"
+        directory_mode: '0755'
+        owner: "{{ ansible_env.USER }}"
+        group: "{{ ansible_env.USER }}"
+
+    - name: Install fast_farmer service
+      ansible.builtin.template:
+        src: "templates/fast_farmer.service.j2"
+        dest: "/etc/systemd/system/fast_farmer.service"
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Reload systemd to recognize new unit file
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable and start fast_farmer service
+      ansible.builtin.systemd:
+        name: "fast_farmer.service"
+        enabled: yes
+        state: started

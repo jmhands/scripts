@@ -1,0 +1,12 @@
+[Unit]
+Description=fast_farmer
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ff_giga run -m cli
+Restart=on-failure
+User={{ ansible_user_id }}
+
+[Install]
+WantedBy=multi-user.target
