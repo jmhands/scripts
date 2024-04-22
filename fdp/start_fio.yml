@@ -1,0 +1,28 @@
+---
+- name: Install fio and run tests on target servers
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Get NVMe smart-log before fio test on localhost
+      local_action: shell nvme smart-log /dev/nvme0n1 > /tmp/smart_before.log
+
+    - name: Get NVMe ocp smart-add-log before fio test on localhost
+      local_action: shell nvme ocp smart-add-log /dev/nvme0n1 > /tmp/ocp_before.log
+
+    - name: Run fio test in background
+      ansible.builtin.shell: |
+        nohup fio --name=test --filename=/dev/vdb --rw=randrw --rwmixread=70 --numjobs=1 --direct=1 --ioengine=io_uring --bs=4k --iodepth=256 --time_based --runtime=86400 --write_bw_log=/tmp/bw_log --write_iops_log=/tmp/iops_log --output-format=json --log_avg_msec=1000 --bwavgtime=1000 --norandommap --random_generator=tausworthe64 > /tmp/fio_output.log 2>&1 &
+      args:
+        executable: /bin/bash
+      async: 10
+      poll: 0
+      become: yes
+
+    - name: Ensure fio started properly
+      ansible.builtin.shell: ps aux | grep '[f]io' | awk '{print $2}'
+      register: fio_pid
+
+    - name: Debug FIO PID
+      ansible.builtin.debug:
+        msg: "FIO is running with PID {{ fio_pid.stdout_lines }}"

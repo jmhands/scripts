@@ -1,0 +1,52 @@
+---
+- name: Fetch logs, process them, and capture SMART data
+  hosts: all
+  become: true
+  tasks:
+    - name: Ensure log directory exists on control machine
+      local_action:
+        module: file
+        path: "./logs"
+        state: directory
+
+    - name: Fetch bandwidth log
+      ansible.builtin.fetch:
+        src: "/tmp/bw_log_bw.1.log"
+        dest: "./logs/{{ inventory_hostname }}_bw_log.log"
+        flat: yes
+
+    - name: Fetch IOPS log
+      ansible.builtin.fetch:
+        src: "/tmp/iops_log_iops.1.log"
+        dest: "./logs/{{ inventory_hostname }}_iops_log.log"
+        flat: yes
+
+    - name: Run the Python script to process logs and generate CSV
+      local_action:
+        module: command
+        cmd: "python3 parse_fio.py"
+      run_once: true  # This ensures the script is only run once after all files are fetched
+      delegate_to: localhost  # Ensures this runs on the control machine
+
+    - name: Display the contents of the CSV file
+      local_action:
+        module: shell
+        cmd: "cat ./output.csv"
+      register: csv_output
+      run_once: true
+      delegate_to: localhost
+
+    - name: Show CSV contents
+      debug:
+        msg: "{{ csv_output.stdout }}"
+      run_once: true
+
+    - name: Get NVMe smart-log after processing logs
+      local_action:
+        module: shell
+        cmd: "nvme smart-log /dev/nvme0n1 > /tmp/smart_after.log"
+
+    - name: Get NVMe ocp smart-add-log after processing logs
+      local_action:
+        module: shell
+        cmd: "nvme ocp smart-add-log /dev/nvme0n1 > /tmp/ocp_after.log"
