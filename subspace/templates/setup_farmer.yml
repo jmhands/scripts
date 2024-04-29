@@ -1,0 +1,37 @@
+- name: Setup Subspace Farmer Service
+  hosts: all
+  become: yes  # Required to copy files to /usr/local/bin and manage systemd services
+  vars:
+    reward_address: "<reward address>" # Fill in with your address
+    metrics_endpoints: "0.0.0.0:9081"
+    node_rpc_url: "ws://192.168.1.10:9944" # Full node IP here
+
+  tasks:
+    - name: Copy subspace-farmer binary to /usr/local/bin
+      ansible.builtin.copy:
+        src: templates/subspace-farmer
+        dest: /usr/local/bin/subspace-farmer
+        owner: jm # don't forget to change
+        group: jm
+        mode: '0755'
+
+    - name: Discover NVMe mount points
+      ansible.builtin.shell: |
+        ls -d /mnt/ssd* 2>/dev/null | grep -E '/mnt/ssd[0-9]+$' | awk '{print "path="$0",size=14T"}' | tr '\n' ' '
+      register: nvme_mount_points
+      changed_when: false
+
+
+
+    - name: Create Subspace Farmer service file
+      ansible.builtin.template:
+        src: subspace-farmer.service.j2
+        dest: /etc/systemd/system/subspace-farmer.service
+      vars:
+        exec_start_paths: "{{ nvme_mount_points.stdout }}"
+
+    - name: Enable and start Subspace Farmer service
+      ansible.builtin.systemd:
+        name: subspace-farmer
+        enabled: yes
+        state: started

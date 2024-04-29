@@ -1,0 +1,17 @@
+[Unit]
+Description=Subspace Node
+Wants=network.target
+After=network.target
+
+[Service]
+User=jm
+Group=jm
+ExecStart=/usr/local/bin/subspace-node run --chain gemini-3h --base-path /home/jm/node --farmer --name "jm" --rpc-methods unsafe --rpc-cors all --rpc-listen-on 0.0.0.0:9944 --prometheus-listen-on 0.0.0.0:9080
+KillSignal=SIGINT
+Restart=always
+RestartSec=10
+Nice=-5
+LimitNOFILE=100000
+
+[Install]
+WantedBy=multi-user.target

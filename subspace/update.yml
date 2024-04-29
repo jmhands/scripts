@@ -1,0 +1,23 @@
+---
+- name: Update all apt packages and install specific utilities
+  hosts: all
+  become: yes  # Necessary to gain superuser privileges for apt operations
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600 # Cache validity in seconds to avoid unnecessary updates
+
+    - name: Upgrade all apt packages
+      ansible.builtin.apt:
+        upgrade: dist
+        force_apt_get: yes # Use apt-get instead of aptitude
+
+    - name: Install specific packages
+      ansible.builtin.apt:
+        name:
+          - nvme-cli
+          - duf
+          - dstat
+          - sysstat
+        state: present

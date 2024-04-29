@@ -1,0 +1,53 @@
+- name: Mount NVMe Drives
+  hosts: all
+  become: yes  # Necessary for permissions and mounting
+  vars:
+    mount_base: "/mnt/ssd"
+    owner_user: "jm"
+    owner_group: "jm"
+  tasks:
+    - name: Install required packages
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      loop: ['xfsprogs', 'e2fsprogs']  # Ensure tools for xfs and ext4 are available
+
+    - name: Get NVMe devices
+      ansible.builtin.shell: |
+        lsblk -o NAME,UUID,FSTYPE -p | grep nvme | awk '{print $1 ":" $2 ":" $3}'
+      register: nvme_devices
+      changed_when: false
+
+    - name: Debug NVMe devices
+      ansible.builtin.debug:
+        msg: "{{ nvme_devices.stdout_lines }}"
+
+    - name: Create mount point
+      ansible.builtin.file:
+        path: "{{ mount_base }}{{ loop_index }}"
+        state: directory
+      loop: "{{ nvme_devices.stdout_lines }}"
+      loop_control:
+        index_var: loop_index
+
+    - name: Update /etc/fstab and mount device
+      ansible.builtin.mount:
+        path: "{{ mount_base }}{{ loop_index }}"
+        src: "UUID={{ item.split(':')[1] }}"
+        fstype: "{{ item.split(':')[2] }}"
+        opts: "defaults,discard"
+        state: mounted
+      loop: "{{ nvme_devices.stdout_lines }}"
+      loop_control:
+        index_var: loop_index
+
+    - name: Set ownership
+      ansible.builtin.file:
+        path: "{{ mount_base }}{{ loop_index }}"
+        owner: "{{ owner_user }}"
+        group: "{{ owner_group }}"
+        state: directory
+        recurse: yes
+      loop: "{{ nvme_devices.stdout_lines }}"
+      loop_control:
+        index_var: loop_index

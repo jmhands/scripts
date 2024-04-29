@@ -1,0 +1,18 @@
+[Unit]
+Description=Subspace Farmer
+Wants=network.target
+After=network.target
+
+[Service]
+User=jm
+Group=jm
+ExecStart=/usr/local/bin/subspace-farmer farm --reward-address {{ reward_address }} --metrics-endpoints {{ metrics_endpoints }} --node-rpc-url {{ node_rpc_url }} {{ exec_start_paths.strip() }}
+
+KillSignal=SIGINT
+Restart=always
+RestartSec=10
+Nice=-5
+LimitNOFILE=100000
+
+[Install]
+WantedBy=multi-user.target
