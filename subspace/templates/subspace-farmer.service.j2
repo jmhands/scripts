@@ -1,18 +1,11 @@
 [Unit]
-Description=Subspace Farmer
-Wants=network.target
+Description=Subspace Farmer Service
 After=network.target
 
 [Service]
-User=jm
-Group=jm
-ExecStart=/usr/local/bin/subspace-farmer farm --reward-address {{ reward_address }} --metrics-endpoints {{ metrics_endpoints }} --node-rpc-url {{ node_rpc_url }} {{ exec_start_paths.strip() }}
-
-KillSignal=SIGINT
+ExecStart=/usr/local/bin/subspace-farmer farm --reward-address {{ reward_address }} --metrics-endpoints {{ metrics_endpoints }} --node-rpc-url {{ node_rpc_url }} {{ exec_start_paths }}
 Restart=always
-RestartSec=10
-Nice=-5
-LimitNOFILE=100000
+User=root
 
 [Install]
 WantedBy=multi-user.target

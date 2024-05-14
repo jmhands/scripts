@@ -1,37 +1,59 @@
+---
 - name: Setup Subspace Farmer Service
-  hosts: all
-  become: yes  # Required to copy files to /usr/local/bin and manage systemd services
+  hosts: farmers
+  become: yes
   vars:
-    reward_address: "<reward address>" # Fill in with your address
+    reward_address: "<reward address>" #update with your address
     metrics_endpoints: "0.0.0.0:9081"
-    node_rpc_url: "ws://192.168.1.10:9944" # Full node IP here
+    node_rpc_url: "ws://192.168.3.41:9944" #update with your full node
 
   tasks:
-    - name: Copy subspace-farmer binary to /usr/local/bin
-      ansible.builtin.copy:
-        src: templates/subspace-farmer
-        dest: /usr/local/bin/subspace-farmer
-        owner: jm # don't forget to change
-        group: jm
+    - name: Download Subspace Farmer binary
+      get_url:
+        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-may-01/subspace-farmer-ubuntu-x86_64-skylake-gemini-3h-2024-may-01"
+        dest: "/usr/local/bin/subspace-farmer"
         mode: '0755'
 
-    - name: Discover NVMe mount points
+    - name: Discover NVMe mount points and use reported sizes
       ansible.builtin.shell: |
-        ls -d /mnt/ssd* 2>/dev/null | grep -E '/mnt/ssd[0-9]+$' | awk '{print "path="$0",size=14T"}' | tr '\n' ' '
+        lsblk --noheadings --raw --output NAME,MOUNTPOINT,SIZE | grep 'nvme' | grep -v '^\s*$' | awk '$2 != "" {print "path="$2",size="$3}'
       register: nvme_mount_points
       changed_when: false
 
-
+    - name: Filter and format NVMe mount points for ExecStart
+      set_fact:
+        exec_start_paths: "{{ nvme_mount_points.stdout_lines | select('search', '^path=/mnt/') | join(' ') }}"
 
     - name: Create Subspace Farmer service file
-      ansible.builtin.template:
+      template:
         src: subspace-farmer.service.j2
         dest: /etc/systemd/system/subspace-farmer.service
       vars:
-        exec_start_paths: "{{ nvme_mount_points.stdout }}"
+        exec_start_paths: "{{ exec_start_paths }}"
 
-    - name: Enable and start Subspace Farmer service
-      ansible.builtin.systemd:
+    - name: Reload systemd to read new service file
+      systemd:
+        daemon_reload: yes
+
+    - name: Stop Subspace Farmer service before update
+      systemd:
+        name: subspace-farmer
+        state: stopped
+
+    - name: Enable and restart Subspace Farmer service
+      systemd:
         name: subspace-farmer
         enabled: yes
-        state: started
+        state: restarted
+
+    - name: Wait for service to stabilize
+      pause:
+        seconds: 15
+
+    - name: Check status of Subspace Farmer service
+      command: systemctl status subspace-farmer
+      register: result
+
+    - name: Display status of Subspace Farmer service
+      debug:
+        msg: "{{ result.stdout }}"
