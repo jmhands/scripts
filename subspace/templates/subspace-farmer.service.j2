@@ -6,7 +6,7 @@ After=network.target
 [Service]
 User=jm
 Group=jm
-ExecStart=/usr/local/bin/subspace-farmer farm --reward-address {{ reward_address }} --metrics-endpoints {{ metrics_endpoints }} --node-rpc-url {{ node_rpc_url }} {{ exec_start_paths.strip() }}
+ExecStart=/usr/local/bin/subspace-farmer farm --reward-address {{ reward_address }} --metrics-endpoints {{ metrics_endpoints }} --node-rpc-url {{ node_rpc_url }} {{ exec_start_paths }}
 
 KillSignal=SIGINT
 Restart=always

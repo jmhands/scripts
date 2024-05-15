@@ -20,12 +20,16 @@
       register: nvme_mount_points
       changed_when: false
 
+    - name: Filter and format NVMe mount points for ExecStart
+      set_fact:
+        exec_start_paths: "{{ nvme_mount_points.stdout_lines | select('search', '^path=/mnt/') | join(' ') }}"
+
     - name: Create Subspace Farmer service file
       template:
         src: subspace-farmer.service.j2
         dest: /etc/systemd/system/subspace-farmer.service
       vars:
-        exec_start_paths: "{{ nvme_mount_points.stdout.strip() }}"
+        exec_start_paths: "{{ exec_start_paths }}"
 
     - name: Reload systemd to read new service file
       systemd:
@@ -53,4 +57,3 @@
     - name: Display status of Subspace Farmer service
       debug:
         msg: "{{ result.stdout }}"
-
