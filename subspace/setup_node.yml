@@ -1,0 +1,60 @@
+---
+- name: Setup Subspace Node
+  hosts: node
+  become: true
+  tasks:
+
+    - name: Download Subspace node binary
+      get_url:
+        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-may-01/subspace-node-ubuntu-x86_64-skylake-gemini-3h-2024-may-01"
+        dest: "/usr/local/bin/subspace-node"
+        mode: '0755'
+
+    - name: Set executable permissions on the binary
+      file:
+        path: "/usr/local/bin/subspace-node"
+        mode: '0755'
+
+    - name: Setup systemd service for Subspace node
+      copy:
+        dest: "/etc/systemd/system/subspace-node.service"
+        content: |
+          [Unit]
+          Description=Subspace Node
+          Wants=network.target
+          After=network.target
+
+          [Service]
+          User=jm
+          Group=jm
+          ExecStart=/usr/local/bin/subspace-node run --chain gemini-3h --base-path /home/jm/node --farmer --name "jm" --rpc-methods unsafe --rpc-cors all --rpc-listen-on 0.0.0.0:9944 --prometheus-listen-on 0.0.0.0:9080
+          KillSignal=SIGINT
+          Restart=always
+          RestartSec=10
+          Nice=-5
+          LimitNOFILE=100000
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd to read new service file
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start Subspace node service
+      systemd:
+        name: subspace-node
+        enabled: yes
+        state: restarted
+
+    - name: Wait for service to stabilize
+      pause:
+        seconds: 15
+
+    - name: Check status of Subspace node service
+      command: systemctl status subspace-node
+      register: result
+
+    - name: Display status of Subspace node service
+      debug:
+        msg: "{{ result.stdout }}"
