@@ -10,7 +10,7 @@
   tasks:
     - name: Download Subspace Farmer binary
       get_url:
-        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-may-01/subspace-farmer-ubuntu-x86_64-skylake-gemini-3h-2024-may-01"
+        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-jun-18/subspace-farmer-ubuntu-x86_64-skylake-gemini-3h-2024-jun-18"
         dest: "/usr/local/bin/subspace-farmer"
         mode: '0755'
 
