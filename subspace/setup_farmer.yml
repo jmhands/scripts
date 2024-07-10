@@ -5,12 +5,12 @@
   vars:
     reward_address: "<reward address>" #update with your address
     metrics_endpoints: "0.0.0.0:9081"
-    node_rpc_url: "ws://192.168.3.41:9944" #update with your full node
+    node_rpc_url: "ws://192.168.1.150:9944" #update with your full node
 
   tasks:
     - name: Download Subspace Farmer binary
       get_url:
-        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-jun-18/subspace-farmer-ubuntu-x86_64-skylake-gemini-3h-2024-jun-18"
+        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-jul-05/subspace-farmer-ubuntu-x86_64-skylake-gemini-3h-2024-jul-05"
         dest: "/usr/local/bin/subspace-farmer"
         mode: '0755'
 
