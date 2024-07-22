@@ -1,18 +1,57 @@
 ---
-- name: Install fio and run tests on target servers
+- name: run fio on target servers
   hosts: all
   become: yes
-  tasks:
+  vars:
+    host_groups:
+      - { range: [0, 1], bs: "4k" }
+      - { range: [2, 3], bs: "16k" }
+      - { range: [4, 5], bs: "64k" }
+      - { range: [6, 7], bs: "128k" }
 
+  tasks:
     - name: Get NVMe smart-log before fio test on localhost
-      local_action: shell nvme smart-log /dev/nvme0n1 > /tmp/smart_before.log
+      local_action: shell nvme smart-log /dev/nvme1n1 > /tmp/smart_before.log
 
     - name: Get NVMe ocp smart-add-log before fio test on localhost
-      local_action: shell nvme ocp smart-add-log /dev/nvme0n1 > /tmp/ocp_before.log
+      local_action: shell nvme ocp smart-add-log /dev/nvme1n1 > /tmp/ocp_before.log
 
-    - name: Run fio test in background
+    - name: Set block size based on host index
+      set_fact:
+        write_bs: "{{ item.bs }}"
+      loop: "{{ host_groups }}"
+      when:
+        - ansible_play_hosts.index(inventory_hostname) >= item.range[0]
+        - ansible_play_hosts.index(inventory_hostname) <= item.range[1]
+
+    - name: Create fio config file on remote hosts
+      ansible.builtin.copy:
+        content: |
+          [global]
+          filename=/dev/vdb
+          ioengine=io_uring
+          direct=1
+          iodepth=256
+          time_based
+          runtime=21600
+          numjobs=1
+          norandommap
+          random_generator=tausworthe64
+
+          [read]
+          rw=randread
+          bs=4k
+
+          [write]
+          rw=write
+          bs={{ write_bs }}
+
+        dest: /tmp/fio_config.ini
+        mode: '0644'
+
+    - name: Run fio test using config file in background
       ansible.builtin.shell: |
-        nohup fio --name=test --filename=/dev/vdb --rw=randrw --rwmixread=70 --numjobs=1 --direct=1 --ioengine=io_uring --bs=4k --iodepth=256 --time_based --runtime=86400 --write_bw_log=/tmp/bw_log --write_iops_log=/tmp/iops_log --output-format=json --log_avg_msec=1000 --bwavgtime=1000 --norandommap --random_generator=tausworthe64 > /tmp/fio_output.log 2>&1 &
+        nohup fio --output-format=json /tmp/fio_config.ini > /tmp/fio_output.log 2>&1 &
       args:
         executable: /bin/bash
       async: 10

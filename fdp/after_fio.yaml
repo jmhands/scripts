@@ -1,52 +1,45 @@
 ---
-- name: Fetch logs, process them, and capture SMART data
+- name: Collect NVMe logs and parse fio results
   hosts: all
-  become: true
+  become: yes
   tasks:
-    - name: Ensure log directory exists on control machine
-      local_action:
-        module: file
-        path: "./logs"
-        state: directory
 
-    - name: Fetch bandwidth log
-      ansible.builtin.fetch:
-        src: "/tmp/bw_log_bw.1.log"
-        dest: "./logs/{{ inventory_hostname }}_bw_log.log"
+    - name: Get NVMe smart-log after fio test on localhost
+      local_action: shell nvme smart-log /dev/nvme1n1 > /tmp/smart_after.log
+
+    - name: Get NVMe ocp smart-add-log after fio test on localhost
+      local_action: shell nvme ocp smart-add-log /dev/nvme1n1 > /tmp/ocp_after.log
+
+    - name: Fetch fio output log from remote hosts
+      fetch:
+        src: /tmp/fio_output.log
+        dest: /tmp/fio_output_{{ inventory_hostname }}.log
         flat: yes
 
-    - name: Fetch IOPS log
-      ansible.builtin.fetch:
-        src: "/tmp/iops_log_iops.1.log"
-        dest: "./logs/{{ inventory_hostname }}_iops_log.log"
-        flat: yes
-
-    - name: Run the Python script to process logs and generate CSV
-      local_action:
-        module: command
-        cmd: "python3 parse_fio.py"
-      run_once: true  # This ensures the script is only run once after all files are fetched
-      delegate_to: localhost  # Ensures this runs on the control machine
-
-    - name: Display the contents of the CSV file
+    - name: Parse fio output log to extract read bandwidth and IOPS
       local_action:
         module: shell
-        cmd: "cat ./output.csv"
-      register: csv_output
-      run_once: true
-      delegate_to: localhost
+        cmd: |
+          cat /tmp/fio_output_{{ inventory_hostname }}.log | \
+          jq -r '.jobs[] | select(.jobname=="read") | "Read BW: \(.read.bw * 1024 / 1000 / 1000) MB/s IOPS: \(.read.iops)"' > /tmp/fio_read_results_{{ inventory_hostname }}.log
+      register: read_results
 
-    - name: Show CSV contents
+    - name: Parse fio output log to extract write bandwidth and IOPS
+      local_action:
+        module: shell
+        cmd: |
+          cat /tmp/fio_output_{{ inventory_hostname }}.log | \
+          jq -r '.jobs[] | select(.jobname=="write") | "Write BW: \(.write.bw * 1024 / 1000 / 1000) MB/s IOPS: \(.write.iops)"' > /tmp/fio_write_results_{{ inventory_hostname }}.log
+      register: write_results
+
+    - name: Display read and write bandwidth and IOPS
+      local_action:
+        module: shell
+        cmd: |
+          echo "Read Bandwidth and IOPS for {{ inventory_hostname }}:" && cat /tmp/fio_read_results_{{ inventory_hostname }}.log && \
+          echo "Write Bandwidth and IOPS for {{ inventory_hostname }}:" && cat /tmp/fio_write_results_{{ inventory_hostname }}.log
+      register: final_results
+
+    - name: Show final results
       debug:
-        msg: "{{ csv_output.stdout }}"
-      run_once: true
-
-    - name: Get NVMe smart-log after processing logs
-      local_action:
-        module: shell
-        cmd: "nvme smart-log /dev/nvme0n1 > /tmp/smart_after.log"
-
-    - name: Get NVMe ocp smart-add-log after processing logs
-      local_action:
-        module: shell
-        cmd: "nvme ocp smart-add-log /dev/nvme0n1 > /tmp/ocp_after.log"
+        msg: "{{ final_results.stdout }}"
