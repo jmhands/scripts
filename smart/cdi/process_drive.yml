@@ -1,0 +1,42 @@
+---
+- name: Get initial device info
+  command: "smartctl -i /dev/{{ item }}"
+  register: device_info
+  ignore_errors: yes
+  failed_when: false
+  no_log: false
+
+- name: Collect SMART data for drive
+  command: "smartctl -x --json /dev/{{ item }}"
+  register: smart_data
+  ignore_errors: yes
+  failed_when: false
+  async: "{{ async_timeout }}"
+  poll: 0
+  when: device_info.rc == 0
+  no_log: false
+
+- name: Wait for SMART data collection
+  async_status:
+    jid: "{{ smart_data.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: "{{ (async_timeout / async_poll) | int }}"
+  delay: "{{ async_poll }}"
+  when: smart_data.ansible_job_id is defined
+  ignore_errors: yes
+  failed_when: false
+  no_log: false
+
+- name: Save SMART data if collection succeeded
+  copy:
+    content: "{{ job_result.stdout | default('{}') }}"
+    dest: "{{ output_dir }}/{{ timestamp }}/{{ item }}_smart.json"
+  when:
+    - job_result is defined
+    - job_result.finished | default(false)
+    - job_result.stdout is defined
+    - job_result.stdout | length > 0
+  ignore_errors: yes
+  failed_when: false
+  no_log: true

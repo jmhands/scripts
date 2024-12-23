@@ -1,0 +1,71 @@
+---
+- name: Collect SMART Data from All Drives
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    output_dir: "/var/log/smart_logs/{{ ansible_hostname }}"
+    timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+    ansible_host_dir: "{{ playbook_dir }}/smart_logs"
+    async_timeout: 3600
+    async_poll: 10
+
+  tasks:
+    - name: Ensure smartmontools is installed
+      package:
+        name: smartmontools
+        state: present
+
+    - name: Create output directory
+      file:
+        path: "{{ output_dir }}/{{ timestamp }}"
+        state: directory
+        mode: '0755'
+
+    - name: Get list of all block devices
+      shell: lsblk -d -n -o NAME | grep -E '^sd|^nvme'
+      register: block_devices
+      changed_when: false
+      no_log: true
+
+    - name: Process drives in parallel
+      include_tasks: process_drive.yml
+      loop: "{{ block_devices.stdout_lines }}"
+      loop_control:
+        label: "Processing /dev/{{ item }}"
+
+    - name: Create archive of SMART data
+      archive:
+        path: "{{ output_dir }}/{{ timestamp }}"
+        dest: "{{ output_dir }}/smart_data_{{ ansible_hostname }}_{{ timestamp }}.tar.gz"
+        format: gz
+
+    - name: Cleanup old data directory
+      file:
+        path: "{{ output_dir }}/{{ timestamp }}"
+        state: absent
+
+    - name: Ensure local smart_logs directory exists on Ansible host
+      delegate_to: localhost
+      become: false
+      file:
+        path: "{{ ansible_host_dir }}"
+        state: directory
+        mode: '0755'
+      run_once: true
+
+    - name: Fetch SMART data archive to Ansible host
+      fetch:
+        src: "{{ output_dir }}/smart_data_{{ ansible_hostname }}_{{ timestamp }}.tar.gz"
+        dest: "{{ ansible_host_dir }}/"
+        flat: yes
+
+    - name: Cleanup remote archive
+      file:
+        path: "{{ output_dir }}/smart_data_{{ ansible_hostname }}_{{ timestamp }}.tar.gz"
+        state: absent
+
+    - name: Display collection status
+      debug:
+        msg: "SMART data collection complete for {{ ansible_hostname }}"
