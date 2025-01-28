@@ -1,4 +1,3 @@
-version: '3.9'
 volumes:
     prometheus_storage:
     grafana_storage:
