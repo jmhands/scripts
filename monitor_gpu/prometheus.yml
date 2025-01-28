@@ -11,15 +11,13 @@ scrape_configs:
 
   - job_name: "node"
     static_configs:
-      - targets: ["localhost:9100"]  # Using localhost since node-exporter is in host network mode
+      - targets: ["node-exporter:9100"]  # Changed from localhost to service name
         labels:
           instance: "node-exporter"
 
   - job_name: "nvidia-dcgm"
-    scrape_interval: 1s  # More frequent scraping for GPU metrics
+    scrape_interval: 1s
     static_configs:
       - targets: ["dcgm-exporter:9400"]
         labels:
           instance: "dcgm-exporter"
-
-

@@ -9,7 +9,6 @@ services:
     container_name: node-exporter
     command:
       - '--path.rootfs=/host'
-    network_mode: host
     pid: host
     restart: unless-stopped
     volumes:
