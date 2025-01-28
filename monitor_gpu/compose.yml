@@ -33,8 +33,7 @@ services:
       - 3000:3000
     volumes:
       - grafana_storage:/var/lib/grafana
-      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-provisioning:/etc/grafana/provisioning
       - ./dashboards:/var/lib/grafana/dashboards
     environment:
       GF_DATABASE_TYPE: mysql
@@ -57,7 +56,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
   dcgm_exporter:
-    image: nvcr.io/nvidia/k8s/dcgm-exporter:4.0.0-4.0.0-ubuntu22.04
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
     container_name: dcgm-exporter
     restart: unless-stopped
     ports:
