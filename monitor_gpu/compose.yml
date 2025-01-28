@@ -1,24 +1,17 @@
-version: '3.9'
 volumes:
     prometheus_storage:
     grafana_storage:
     mysql_data:
 services:
   node-exporter:
-    image: prom/node-exporter:latest
+    image: quay.io/prometheus/node-exporter:latest
     container_name: node-exporter
-    restart: unless-stopped
-    ports:
-      - 9100:9100
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
     command:
-      - "--path.procfs=/host/proc"
-      - "--path.sysfs=/host/sys"
-      - "--path.rootfs=/rootfs"
-      - "--collector.filesystem.ignored-mount-points='^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'"
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -38,12 +31,16 @@ services:
       - 3000:3000
     volumes:
       - grafana_storage:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./dashboards:/var/lib/grafana/dashboards
     environment:
       GF_DATABASE_TYPE: mysql
       GF_DATABASE_HOST: mysql:3306
       GF_DATABASE_NAME: grafana
       GF_DATABASE_USER: grafana
       GF_DATABASE_PASSWORD: grafanapassword
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
     depends_on:
       - mysql
   mysql:
@@ -57,8 +54,9 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
   dcgm_exporter:
-    image: nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.9-3.6.1-ubuntu22.04
     container_name: dcgm-exporter
+    restart: unless-stopped
     ports:
       - "9400:9400"
     cap_add:
@@ -68,5 +66,5 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 2
+              count: all
               capabilities: [gpu]

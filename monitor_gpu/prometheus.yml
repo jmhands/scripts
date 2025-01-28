@@ -5,14 +5,19 @@ scrape_configs:
   - job_name: "prometheus"
     scrape_interval: 15s
     static_configs:
-    - targets: ["localhost:9090"]
+      - targets: ["localhost:9090"]
+        labels:
+          instance: "prometheus"
 
   - job_name: "node"
     static_configs:
-    - targets: ["node-exporter:9100"]
+      - targets: ["node-exporter:9100"]  # Changed from localhost to service name
+        labels:
+          instance: "node-exporter"
 
   - job_name: "nvidia-dcgm"
+    scrape_interval: 1s
     static_configs:
-    - targets: ["dcgm-exporter:9400"]
-
-
+      - targets: ["dcgm-exporter:9400"]
+        labels:
+          instance: "dcgm-exporter"
