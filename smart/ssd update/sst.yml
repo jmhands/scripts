@@ -1,0 +1,61 @@
+---
+- name: Download and prepare SST package on control node
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    sst_package: "sst_2.3.320-0_amd64.deb"
+    sst_zip: "sst-cli-linux-deb--2-3.zip"
+    sst_url: "https://sdmsdfwdriver.blob.core.windows.net/files/kba-gcc/drivers-downloads/ka-00085/sst--2-3/sst-cli-linux-deb--2-3.zip"
+  tasks:
+    - name: Install unzip package
+      apt:
+        name: unzip
+        state: present
+        update_cache: yes
+
+    - name: Download SST package
+      get_url:
+        url: "{{ sst_url }}"
+        dest: "/tmp/{{ sst_zip }}"
+        mode: '0644'
+
+    - name: Unzip SST package
+      unarchive:
+        src: "/tmp/{{ sst_zip }}"
+        dest: "/tmp"
+        remote_src: yes
+
+- name: Install and configure SST on remote hosts
+  hosts: all
+  become: true
+  vars:
+    sst_package: "sst_2.3.320-0_amd64.deb"
+  tasks:
+    - name: Get number of NVMe SSDs
+      shell: "ls -1 /dev/nvme[0-9]n1 | wc -l"
+      register: nvme_count
+      changed_when: false
+
+    - name: Copy SST package to remote host
+      copy:
+        src: "/tmp/{{ sst_package }}"
+        dest: "/tmp/{{ sst_package }}"
+        mode: '0644'
+
+    - name: Install SST package
+      apt:
+        deb: "/tmp/{{ sst_package }}"
+        state: present
+
+    - name: Clean up temporary files
+      file:
+        path: "/tmp/{{ sst_package }}"
+        state: absent
+
+    - name: Run SST load command for each SSD
+      command: "sudo sst load -f -ssd {{ item }}"
+      loop: "{{ range(0, nvme_count.stdout|int) | list }}"
+      register: sst_load_results
+      changed_when: sst_load_results.rc == 0
+      failed_when: sst_load_results.rc != 0
