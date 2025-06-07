@@ -3,7 +3,7 @@ Description=Subspace Farmer Service
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/subspace-farmer cluster --nats-server nats://{{ node_rpc_url }}:4222 -- farmer --reward-address {{ reward_address }} --metrics-endpoints {{ metrics_endpoints }} --node-rpc-url {{ node_rpc_url }} {{ exec_start_paths }}
+ExecStart=/usr/local/bin/subspace-farmer cluster --nats-server nats://192.168.1.150:4222 --prometheus-listen-on 0.0.0.0:9081 farmer --reward-address stBkn2rEqnxdeTVhoiSxELhDdqtURQjqoUpyAYc6F3VKvHxiA {{ exec_start_paths }}
 Restart=always
 User=root
 

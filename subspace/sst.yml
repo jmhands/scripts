@@ -1,0 +1,34 @@
+---
+- name: Install and configure SST
+  hosts: all
+  become: true
+  vars:
+    sst_package: "sst_2.1.307-0_amd64.deb"
+  tasks:
+    - name: Get number of NVMe SSDs
+      shell: "ls -1 /dev/nvme[0-9]n1 | wc -l"
+      register: nvme_count
+      changed_when: false
+
+    - name: Copy SST package to remote host
+      copy:
+        src: "templates/{{ sst_package }}"
+        dest: "/tmp/{{ sst_package }}"
+        mode: '0644'
+
+    - name: Install SST package
+      apt:
+        deb: "/tmp/{{ sst_package }}"
+        state: present
+
+    - name: Remove SST package file
+      file:
+        path: "/tmp/{{ sst_package }}"
+        state: absent
+
+    - name: Run SST load command for each SSD
+      command: "sudo sst load -f -ssd {{ item }}"
+      loop: "{{ range(0, nvme_count.stdout|int) | list }}"
+      register: sst_load_results
+      changed_when: sst_load_results.rc == 0
+      failed_when: sst_load_results.rc != 0
