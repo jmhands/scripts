@@ -1,0 +1,97 @@
+---
+- name: Collect NVMe SMART logs in JSON format
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    # Set the collection host - change this to your preferred host
+    collection_host: "{{ groups['all'][0] }}"
+    log_dir: "/opt/nvme_smart_logs"
+    timestamp: "{{ ansible_date_time.epoch }}"
+
+  tasks:
+    - name: Create log directory on collection host
+      file:
+        path: "{{ log_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: "{{ collection_host }}"
+      run_once: true
+
+    - name: Get list of NVMe devices
+      shell: nvme list | grep '^/dev/nvme' | awk '{print $1}'
+      register: nvme_devices
+      changed_when: false
+      failed_when: false
+
+    - name: Debug - Show found NVMe devices
+      debug:
+        msg: "Found NVMe devices on {{ inventory_hostname }}: {{ nvme_devices.stdout_lines }}"
+      when: nvme_devices.stdout_lines | length > 0
+
+    - name: Skip hosts without NVMe devices
+      debug:
+        msg: "No NVMe devices found on {{ inventory_hostname }}"
+
+    - name: Get serial numbers for each NVMe device
+      shell: "nvme id-ctrl {{ item }} -H | grep '^sn' | awk '{print $3}'"
+      register: nvme_serials
+      with_items: "{{ nvme_devices.stdout_lines }}"
+      when: nvme_devices.stdout_lines | length > 0
+      failed_when: false
+
+    - name: Collect SMART logs for each NVMe device
+      shell: "nvme smart-log {{ item }} --output-format=json"
+      register: smart_logs
+      with_items: "{{ nvme_devices.stdout_lines }}"
+      when: nvme_devices.stdout_lines | length > 0
+      failed_when: false
+
+    - name: Collect Controller ID data for each NVMe device
+      shell: "nvme id-ctrl {{ item }} --output-format=json"
+      register: id_ctrl_logs
+      with_items: "{{ nvme_devices.stdout_lines }}"
+      when: nvme_devices.stdout_lines | length > 0
+      failed_when: false
+
+    - name: Collect Namespace ID data for each NVMe device
+      shell: "nvme id-ns {{ item }} --output-format=json"
+      register: id_ns_logs
+      with_items: "{{ nvme_devices.stdout_lines }}"
+      when: nvme_devices.stdout_lines | length > 0
+      failed_when: false
+
+    - name: Save complete NVMe logs to collection host
+      copy:
+        content: |
+          {
+            "hostname": "{{ inventory_hostname }}",
+            "device": "{{ item.0.item }}",
+            "serial_number": "{{ item.1.stdout | default('UNKNOWN') }}",
+            "timestamp": "{{ ansible_date_time.iso8601 }}",
+            "smart_log": {{ item.0.stdout | default('{}') }},
+            "id_ctrl": {{ item.2.stdout | default('{}') }},
+            "id_ns": {{ item.3.stdout | default('{}') }}
+          }
+        dest: "{{ log_dir }}/{{ inventory_hostname }}_{{ item.1.stdout | default('UNKNOWN') }}_{{ timestamp }}.json"
+        mode: '0644'
+      delegate_to: "{{ collection_host }}"
+      with_together:
+        - "{{ smart_logs.results }}"
+        - "{{ nvme_serials.results }}"
+        - "{{ id_ctrl_logs.results }}"
+        - "{{ id_ns_logs.results }}"
+      when:
+        - nvme_devices.stdout_lines | length > 0
+        - item.0.stdout is defined
+        - item.0.stdout != ""
+
+    - name: Display summary
+      debug:
+        msg: "Collected SMART logs from {{ nvme_devices.stdout_lines | length }} NVMe devices on {{ inventory_hostname }}"
+      when: nvme_devices.stdout_lines | length > 0
+
+    - name: Show collection summary
+      debug:
+        msg: "All SMART logs have been collected to {{ collection_host }}:{{ log_dir }}"
+      run_once: true

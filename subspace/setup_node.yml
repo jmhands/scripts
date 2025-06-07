@@ -6,7 +6,7 @@
 
     - name: Download Subspace node binary
       get_url:
-        url: "https://github.com/subspace/subspace/releases/download/gemini-3h-2024-jul-05/subspace-node-ubuntu-x86_64-skylake-gemini-3h-2024-jul-05"
+        url: "https://github.com/autonomys/subspace/releases/download/mainnet-2025-jan-14/subspace-node-ubuntu-x86_64-skylake-mainnet-2025-jan-14"
         dest: "/usr/local/bin/subspace-node"
         mode: '0755'
 
@@ -27,7 +27,7 @@
           [Service]
           User=jm
           Group=jm
-          ExecStart=/usr/local/bin/subspace-node run --chain gemini-3h --base-path /home/jm/node --farmer --name "jm" --rpc-methods unsafe --rpc-cors all --rpc-listen-on 0.0.0.0:9944 --prometheus-listen-on 0.0.0.0:9080
+          ExecStart=/usr/local/bin/subspace-node run --chain mainnet --pot-external-entropy 00000000000000000000d695f8a14ff24a8dfb68245cec4a4b6787de86e232fe --base-path /mnt/node --farmer --name "jm" --rpc-methods unsafe --rpc-cors all --rpc-listen-on 0.0.0.0:9944 --prometheus-listen-on 0.0.0.0:9080
           KillSignal=SIGINT
           Restart=always
           RestartSec=10
